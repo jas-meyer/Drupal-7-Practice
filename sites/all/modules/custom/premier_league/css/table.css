@@ -1,0 +1,13 @@
+.table_page tbody tr.odd{
+    background-color: red !important;
+    color: blue;
+}
+
+.table_page thead tr th{
+    background-color: black !important;
+}
+
+.table_page tbody tr td.hover-cell{
+    background-color: yellow !important;
+
+}

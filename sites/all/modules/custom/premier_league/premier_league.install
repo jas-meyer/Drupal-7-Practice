@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * @file
+ * League Trades module install/schema hooks
+ */
+
+ /**
+  * Implements hook_schema().
+  */
+function premier_league_schema() {
+
+    $schema['trade'] = [
+      'description' => 'Details of trade between two teams',
+      'fields' => array(
+        'id' => array(
+          'description' => 'The primary identifier of a trade',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'vid' => array(
+          'description' => 'The current revision number',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+          'default' => NULL,
+        ),
+        'uid' => array(
+        'description' => 'The user who initiated the trade',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        ),
+        'status' => array(
+          'description' => 'The status of the transfer',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => 'Pending',
+        ),
+        'created' => array(
+          'description' => 'Unix timestamp when transfer was created',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'changed' => array(
+          'description' => 'Unix timestamp when transfer last updated',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'from_team' => array(
+          'description' => 'The team that player is transferring from',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ),
+        'to_team' => array(
+          'description' => "The team that player is transferring to",
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ),
+        'transfer_player' => array(
+          'description' => 'The player that is being transfered',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ),
+        'fee' => array(
+          'description' => 'The fee for the transferred player',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => '0',
+        ),
+      ),
+      'primary key' => array('id'),
+      'indexes' => array(
+        'id' => array('id'),
+      )
+    ];
+    return $schema;
+}

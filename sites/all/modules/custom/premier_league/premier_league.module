@@ -1,0 +1,316 @@
+<?php
+
+/**
+ * @file 
+ * Premier League module File
+ */
+
+/**
+  *Implements hook_help()
+*/
+function premier_league_help($path, $arg) {
+    switch ($path) {
+        case "admin/help#premier_league":
+            return t("Module where you can add players and teams and also make trades");
+            break;
+    }
+}
+function premier_league_init(){
+    drupal_add_js(drupal_get_path('module', 'premier_league') . '/js/table.js');
+}
+
+function premier_league_block_info() {
+    $blocks['league_table'] = array(
+        'info' => t('League Table'),
+        'status' => TRUE,
+        'region' => 'content',
+        'visibility' => BLOCK_VISIBILITY_LISTED,
+        'cache' => DRUPAL_CACHE_PER_ROLE,
+    );
+    return $blocks;
+}
+
+function premier_league_block_view($delta = '') {
+    switch ($delta) {
+        case 'league_table':
+            $block['content'] = '<div id = "team-body"> </div>'; 
+    }
+    return $block;
+}
+/**
+ * Transfer request form
+ */
+function transfer_form($form, &$form_state) {
+    $form['description'] = array(
+        '#type' => 'item', 
+        '#title' => t('A form that allows transfers between two teams'),
+    );
+    $form['from_team'] = array(
+        '#type' => 'select',
+        '#title' => t('From'),
+        '#options' => get_team_names(),
+        '#empty_option' => t('-SELECT-'),
+    );
+    $form['to_team'] = array(
+        '#type' => 'select',
+        '#title' => t('To'),
+        '#options' => get_team_names(),
+        '#empty_option' => t('-SELECT-'),
+    );
+    $form['transfer_player'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Player',
+        '#maxlength' => 60,
+        '#autocomplete_path' => 'player/autocomplete',
+    );
+    $form['fee'] = array(
+        '#type' => 'textfield',
+        '#title' => 'The fee for the transfers',
+        '#maxlength' => 8,
+        '#default_value' => 0,
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Submit',
+    );
+    // $form['#attached']['js'] = array(
+    //     drupal_get_path('module', 'premier_league') . '/js/.js',
+    //   );
+    return $form;
+}
+
+function player_autocomplete_callback($string = ""){
+    $matches = array();
+    if ($string) {
+        $result = db_select('node')
+            ->fields('node', array('nid', 'title'))
+            ->condition('type', 'player')
+            ->condition('title', db_like($string) . '%', 'LIKE')
+            ->range(0, 10)
+            ->execute();
+        foreach ($result as $node) {
+            $matches[$node->title . " [$node->nid]"] = check_plain($node->title);
+        }
+    }
+    drupal_json_output($matches);
+}
+/**
+ * Implements validation from the Form API for the transfer form
+ */
+
+function transfer_form_validate($form, &$form_state) {
+    $from_team = $form_state['values']['from_team'];
+    if (!isset($from_team)) {
+        form_set_error('from_team', t('Please select the team that you are transferring a player from.'));
+    }
+    $to_team = $form_state['values']['to_team'];
+    if (!isset($to_team)) {
+        form_set_error('to_team', t('Please select the team that you are transferring a player to.'));
+    }
+    if ($from_team == $to_team) {
+        form_set_error('to_team', t('Trade cannot be performed betweeen the same team'));
+    }
+    $transfer_player = $form_state['values']['transfer_player'];
+    if (!isset($transfer_player)) {
+        form_set_error('transfer_player', t('Transferring player textbox must be filled in'));
+    }
+    $fee = $form_state['values']['fee'];
+    if (!isset($fee)) {
+        form_set_error('fee', t('The fee field needs a value that is greater than -1'));
+    }
+    elseif ($fee < 0) {
+        form_set_error('fee', t('The fee must be 0 or greater'));
+    }
+}
+
+function transfer_form_submit($form, &$form_state){
+    // $from_team_nid = get_nids($form_state['complete form']['from_team']['#options'][$form_state['values']['from_team']], 'team');
+    // $to_team_nid = get_nids($form_state['complete form']['to_team']['#options'][$form_state['values']['to_team']], 'team');
+    // $transfer_player = get_nids($form_state['values']['transfer_player'], 'player');
+    global $user;
+    $uid = $user->uid;
+    $transfer = db_insert('trade')
+        ->fields(array(
+            'from_team' => $form_state['complete form']['from_team']['#options'][$form_state['values']['from_team']],
+            'to_team' => $form_state['complete form']['to_team']['#options'][$form_state['values']['to_team']],
+            'transfer_player' => $form_state['values']['transfer_player'],
+            'fee' => $form_state['values']['fee'],
+            'created' => REQUEST_TIME,
+            'changed' => REQUEST_TIME,
+            'uid' => $uid,
+        ))
+        ->execute();
+}
+
+// function transfer_edit_form($form, &$form_state){
+//     $form['description'] = array(
+//         '#type' => 'item', 
+//         '#title' => t('A form that allows transfers between two teams'),
+//     );
+//     $form['from_team'] = array(
+//         '#type' => 'select',
+//         '#title' => t('From'),
+//         '#options' => get_team_names(),
+//         '#empty_option' => t('-SELECT-'),
+//     );
+//     $form['to_team'] = array(
+//         '#type' => 'select',
+//         '#title' => t('To'),
+//         '#options' => get_team_names(),
+//         '#empty_option' => t('-SELECT-'),
+//     );
+//     $form['transfer_player'] = array(
+//         '#type' => 'textfield',
+//         '#title' => 'Player',
+//         '#maxlength' => 60,
+//         '#autocomplete_path' => 'player/autocomplete',
+//     );
+//     $form['fee'] = array(
+//         '#type' => 'textfield',
+//         '#title' => 'The fee for the transfers',
+//         '#maxlength' => 8,
+//         '#default_value' => 0,
+//     );
+//     $form['submit'] = array(
+//         '#type' => 'submit',
+//         '#value' => 'Submit',
+//     );
+// }
+function get_team_names() {
+    $result = db_query("SELECT title FROM {node} WHERE type = 'team'")->fetchCol();
+    return $result;
+}
+
+function get_team_body() {
+    $result = db_query("SELECT title, body FROM {node} WHERE type = 'team'")->fetchCol();
+    return $result;
+}
+
+
+// function get_nids($title, $type) {
+//     $nid = db_query("SELECT nid FROM {node} WHERE title = :title AND type =:type", array(':title' => $title, ':type' => $type))->fetchField();
+//     dpm("from get_nids function " . $nid);
+//     return $nid;
+// }
+
+
+/**
+  *Implements hook_menu()
+*/
+function premier_league_menu() {
+    $items['league'] = [
+        'title' => 'Premier League Main Page',
+        'description' => 'Allows User Manage and Create Teams and Players',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('transfer_form'),
+        // 'access callback' => TRUE,
+        'access arguments' => array('manage trades'),
+    ];
+    $items['league/transfer'] = [
+        'title' => 'Transfer Form',
+        'description' => 'Form for transferring a player between two teams',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        // 'access callback' => TRUE,
+        'access arguments' => array('manage trades'),
+    ];
+    $items['league/transfer_table'] = [
+        'title' => 'Transfer Table',
+        'description' => 'Table of the history of transfers',
+        'page callback' => 'transfer_table',
+        'type' => MENU_LOCAL_TASK,
+        'access callback' => TRUE,
+    ];
+    $items['player/autocomplete'] = [
+        'title' => 'Player autocomplete',
+        'page callback' =>  'player_autocomplete_callback',
+        'type' => MENU_CALLBACK,
+        'access arguments' => array('access content'),
+    ];
+        $items['node/get/ajax/%'] = array(
+          'page callback' => 'premier_league_ajax_get_ajax', // Render HTML.
+          'page arguments' => array(3),
+          'type' => MENU_CALLBACK,
+          'access arguments' => array('access content'),
+          'delivery callback' => 'premier_league_ajax_callback',  // Magic goes here.
+        );
+    return $items;
+}
+
+function premier_league_ajax_get_ajax($nid) {
+    // This example loads a node and returns the teaser.
+    // You can return whatever you want, including forms.
+    $node = node_load($nid);
+    return node_view($node, 'teaser');
+  }
+  
+  function premier_league_ajax_callback($page_callback_result) {
+    // Only render content
+    $content = drupal_render($page_callback_result);
+  
+    // Add CSS and JS files, add some markup
+    $html = '<html><head><title></title>' . drupal_get_css() . drupal_get_js() . '</head><body class="jquery-ajax-load">' . $content . '</body></html>';
+    print $html;
+  
+    // Perform end-of-request tasks.
+    drupal_page_footer();
+  }
+/**
+ * Implements hook_permission().
+ */
+
+ function premier_league_permission() {
+     return [
+        'manage trades' => [
+        'title' => t('Manage Trades'),
+        'description' => t('Allows user to make changes with transfers'),
+        ]
+    ];
+}
+
+function transfer_table() {
+    $header = array(
+        array('data' => t('From Team')),
+        array('data' => t('Player')),
+        array('data' => t('To Team')),
+        array('data' => t('Fee')),
+        array('data' => t('Status')),
+        array('data' => t('Edit or Delete')),
+    );
+    $query = db_select('trade', 't')
+        ->fields('t', array('id', 'from_team', 'transfer_player', 'to_team', 'fee', 'status' ))
+        ->execute()
+        ->fetchAll();
+        foreach ($query as $trade_table) {
+            $edit = l(t('Edit'), 'league/transfer/' . $trade_table -> id . '/edit');
+            $delete = l(t('Delete'), 'league/transfer/' . $trade_table -> id . '/delete');
+            $rows_trade[] = 
+            array(
+                array(
+                    'data' => t($trade_table -> from_team)
+                ),
+                array(
+                    'data' => t($trade_table -> transfer_player)
+                ),
+                array(
+                    'data' => t($trade_table -> to_team)
+                ),
+                array(
+                    'data' => t($trade_table -> fee)
+                ),
+                array(
+                    'data' => t($trade_table -> status)
+                ),
+                array(
+                    'data' => $edit . ' ' . $delete
+                )
+            );
+        }
+    return theme('table',
+        array(
+        'header' => $header,
+        'rows' => $rows_trade,
+        'attributes' => array('class' => array('table_page'))
+        )
+    );
+}
+

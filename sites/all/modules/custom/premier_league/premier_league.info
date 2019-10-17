@@ -1,0 +1,6 @@
+name = Premier League
+description = Premier League modules with Teams and Players
+core = 7.x
+package = Fun Times
+
+stylesheets[all][0] = css/table.css
