@@ -13,13 +13,15 @@ class Authorization {
     }
 
 function get_access_token() {
-    $result = db_query("SELECT 'access_token', 'token_expiration' FROM {authorization} WHERE market = $this->market").fetchALL();
+    $result = db_query("SELECT 'access_token', 'token_expiration' FROM {authorization} WHERE market = ':market'", array(
+        ':market' => $this->market,
+    ))->fetchALL();
     return $result;
 }
 
 function add_access_token($token, $expiration) {
 // $result = db_query("INSERT INTO {authorization} (access_token, token_expiration, market) VALUES (%s, %d)", $token , $expiration);
-    $query = db_insert('authorization')
+    $result = db_insert('authorization')
         ->fields(
             array(
                 'access_token' => $token,
@@ -27,10 +29,19 @@ function add_access_token($token, $expiration) {
                 'market' => $this->market,
             ))
             ->execute();
+    return $result;
 }
 
 function update_access_token($token, $expiration) {
-
+    $query = db_update($token, $expiration)
+        ->fields(
+            array(
+                'access_token' => $token,
+                'token_expiration' => $expiration,
+            ))
+        ->condition('market', $this->market)
+        ->execute();
+    return $result;
 }
 
 function token_check() {
@@ -41,7 +52,7 @@ function token_check() {
 
     $isExpired = token_expiration - REQUEST_TIME; 
 
-    if(isset($access_token)){
+    if(!isset($access_token)){
         $token_callback = request();
         $token = $token_callback->access_token;
         $expiration = $token_callback->token_expiration; 
@@ -50,10 +61,15 @@ function token_check() {
 
     }
     elseif($isExpired < 0){
-        $token_callback = request($this->market);
-        // update token function
+        $token_callback = request();
+        $token = $token_callback->access_token;
+        $expiration = $token_callback->token_expiration; 
+        $update_result = update_access_token($token, $expiration);
+
     }
-    else 
+    else {
+
+    }
 }
 
 

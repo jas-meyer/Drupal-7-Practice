@@ -129,7 +129,7 @@ function transfer_form_submit($form, &$form_state){
     // $transfer_player = get_nids($form_state['values']['transfer_player'], 'player');
     global $user;
     $uid = $user->uid;
-    $transfer = db_insert('trade')
+    $nid = db_insert('trade')
         ->fields(array(
             'from_team' => $form_state['complete form']['from_team']['#options'][$form_state['values']['from_team']],
             'to_team' => $form_state['complete form']['to_team']['#options'][$form_state['values']['to_team']],
@@ -140,6 +140,7 @@ function transfer_form_submit($form, &$form_state){
             'uid' => $uid,
         ))
         ->execute();
+    dpm('What is returned with a post ' . $nid);
 }
 
 // function transfer_edit_form($form, &$form_state){
